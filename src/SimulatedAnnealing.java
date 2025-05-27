@@ -14,15 +14,18 @@ public class SimulatedAnnealing {
     }
 
     // Simulated Annealing Algorithm
-    public static Solution simulatedAnnealing(int iterations){
+    public static Solution simulatedAnnealing(int iterations, int noOfThreads){
         Random random = new Random();
         double temperature = 1000;
         double cooling = 0.75;
 
+        // Task decomposition
+        int iterationsPerThread = iterations / noOfThreads;
+
         Solution currentSolution = randomSolution(random);
         Solution bestSolution = currentSolution;
 
-        for (int i = 0; i < iterations; i++){
+        for (int i = 0; i < iterationsPerThread; i++){
             // You want to introduce variation while keeping new solutions “close” to the current one.
             Solution neighbor = new Solution(
                     currentSolution.getA() + random.nextGaussian(),
@@ -32,6 +35,8 @@ public class SimulatedAnnealing {
             );
 
             double errorDifference = currentSolution.calculateError() -  neighbor.calculateError(); // If its positive then the neighbor is better, else we take the worst solution
+            // If errorDifference > 0, the neighbor is better, so we accept it.
+            // As the temperature decreases, Math.exp(errorDifference / temperature) becomes smaller, and will be less likely to accept worse solutions
             if(errorDifference > 0 || Math.exp(errorDifference / temperature) > random.nextDouble()){
                 currentSolution = neighbor;
                 if(currentSolution.calculateError() < bestSolution.calculateError()){
@@ -51,7 +56,7 @@ public class SimulatedAnnealing {
             final int index = i;
             threadsArray[i] = new Thread(() -> {
                 // Store the best solution in the results array with the specified index
-                resultsArray[index] = simulatedAnnealing(iterations);
+                resultsArray[index] = simulatedAnnealing(iterations, noOfThreads);
             });
             // Starting the thread after storing the result in the results array
             threadsArray[i].start();
@@ -83,22 +88,22 @@ public class SimulatedAnnealing {
 
 
     public static void main(String[] args) throws InterruptedException {
-        int iterations = 500;
+        int iterations = 1000;
 
         long start = System.nanoTime();
-        Solution seq = simulatedAnnealing(iterations);
+        Solution sequential = simulatedAnnealing(iterations, 1);
         long end = System.nanoTime();
-        printSolution("Sequential", seq, (end - start) / 1_000_000.0);
+        printSolution("Sequential", sequential, (end - start) / 1_000_000.0);
 
         start = System.nanoTime();
-        Solution best4Threads = runParallel(4, iterations);
+        Solution bestOf4Threads = runParallel(4, iterations);
         end = System.nanoTime();
-        printSolution("Parallel (4 Threads)", best4Threads, (end - start) / 1_000_000.0);
+        printSolution("Parallel (4 Threads)", bestOf4Threads, (end - start) / 1_000_000.0);
 
 
         start = System.nanoTime();
-        Solution best8Threads = runParallel(8, iterations);
+        Solution bestOf8Threads = runParallel(8, iterations);
         end = System.nanoTime();
-        printSolution("Parallel (8 Threads)", best8Threads, (end - start) / 1_000_000.0);
+        printSolution("Parallel (8 Threads)", bestOf8Threads, (end - start) / 1_000_000.0);
     }
 }
